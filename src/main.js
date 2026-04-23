@@ -115,12 +115,12 @@ function renderPublicPage() {
           <h2>번호와 제목을 빠르게 찾아보세요</h2>
         </div>
         <div class="hero-count">
-          <strong>${results.length}</strong>
+          <strong id="heroCount">${results.length}</strong>
           <span>검색 결과</span>
         </div>
       </section>
       ${renderSearchPanel(results.length)}
-      ${renderTrackTable(results, false)}
+      <div id="resultsMount">${renderTrackTable(results, false)}</div>
     </main>
   `;
 
@@ -138,7 +138,7 @@ function renderAdminPage() {
         ${renderEditor()}
       </section>
       ${renderSearchPanel(results.length)}
-      ${renderTrackTable(results, true)}
+      <div id="resultsMount">${renderTrackTable(results, true)}</div>
     </main>
   `;
 
@@ -171,8 +171,8 @@ function renderSearchPanel(resultCount) {
         autocomplete="off"
       />
       <div class="info-bar">
-        <span>${escapeHtml(state.status)}</span>
-        <span>총 ${resultCount}개</span>
+        <span id="statusText">${escapeHtml(state.status)}</span>
+        <span id="resultCountText">총 ${resultCount}개</span>
       </div>
     </section>
   `;
@@ -265,9 +265,38 @@ function renderTrackTable(tracks, editable) {
   `;
 }
 
+function updateSearchResultsOnly() {
+  const results = getSearchResults();
+  const resultsMount = document.getElementById('resultsMount');
+  const statusText = document.getElementById('statusText');
+  const resultCountText = document.getElementById('resultCountText');
+  const heroCount = document.getElementById('heroCount');
+
+  if (resultsMount) {
+    resultsMount.innerHTML = renderTrackTable(results, isAdminPage);
+  }
+
+  if (statusText) {
+    statusText.textContent = state.status;
+  }
+
+  if (resultCountText) {
+    resultCountText.textContent = `총 ${results.length}개`;
+  }
+
+  if (heroCount) {
+    heroCount.textContent = String(results.length);
+  }
+
+  bindResultActionEvents();
+}
+
 function bindSearchEvents() {
   const searchInput = document.getElementById('searchInput');
   if (!searchInput) return;
+
+  if (searchInput.dataset.bound === 'true') return;
+  searchInput.dataset.bound = 'true';
 
   if (window.matchMedia('(pointer: fine)').matches && !isAdminPage) {
     searchInput.focus();
@@ -278,7 +307,7 @@ function bindSearchEvents() {
     if (state.isComposing || event.isComposing) return;
     state.query = event.target.value;
     localStorage.setItem('sig:lastQuery', state.query);
-    render();
+    updateSearchResultsOnly();
   });
 
   searchInput.addEventListener('compositionstart', () => {
@@ -289,7 +318,7 @@ function bindSearchEvents() {
     state.isComposing = false;
     state.query = event.target.value;
     localStorage.setItem('sig:lastQuery', state.query);
-    render();
+    updateSearchResultsOnly();
   });
 }
 
@@ -302,7 +331,10 @@ function bindAdminEvents() {
     render();
   });
   document.getElementById('entryForm')?.addEventListener('submit', saveTrack);
+  bindResultActionEvents();
+}
 
+function bindResultActionEvents() {
   document.querySelectorAll('[data-edit-id]').forEach((button) => {
     button.addEventListener('click', () => {
       state.editingId = Number(button.dataset.editId);
