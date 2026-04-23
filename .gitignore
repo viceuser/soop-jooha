@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*
+!.env.example
+.vercel/
+.firebase/
+firebase-debug.log
+*.log
+*.tsbuildinfo
+/logo.png
+
+.vercel
