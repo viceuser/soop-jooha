@@ -171,7 +171,7 @@ function renderSearchPanel(resultCount) {
         autocomplete="off"
       />
       <div class="info-bar">
-        <span id="statusText">${escapeHtml(state.status)}</span>
+        ${isAdminPage ? `<span id="statusText">${escapeHtml(state.status)}</span>` : '<span aria-hidden="true"></span>'}
         <span id="resultCountText">총 ${resultCount}개</span>
       </div>
     </section>
@@ -277,7 +277,7 @@ function updateSearchResultsOnly() {
   }
 
   if (statusText) {
-    statusText.textContent = state.status;
+    statusText.textContent = isAdminPage ? state.status : '';
   }
 
   if (resultCountText) {
