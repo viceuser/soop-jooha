@@ -104,11 +104,23 @@ function render() {
 }
 
 function renderPublicPage() {
+  const results = getSearchResults();
+
   document.getElementById('app').innerHTML = `
-    <main class="shell">
+    <main class="shell public-shell">
       ${renderHeader('시그 검색기', false)}
-      ${renderSearchPanel()}
-      ${renderTrackTable(getSearchResults(), false)}
+      <section class="hero-panel">
+        <div>
+          <span class="eyebrow">SOOP JOOHA</span>
+          <h2>번호와 제목을 빠르게 찾아보세요</h2>
+        </div>
+        <div class="hero-count">
+          <strong>${results.length}</strong>
+          <span>검색 결과</span>
+        </div>
+      </section>
+      ${renderSearchPanel(results.length)}
+      ${renderTrackTable(results, false)}
     </main>
   `;
 
@@ -116,6 +128,8 @@ function renderPublicPage() {
 }
 
 function renderAdminPage() {
+  const results = getSearchResults();
+
   document.getElementById('app').innerHTML = `
     <main class="shell">
       ${renderHeader('목록 관리', true)}
@@ -123,8 +137,8 @@ function renderAdminPage() {
         ${renderLoginBox()}
         ${renderEditor()}
       </section>
-      ${renderSearchPanel()}
-      ${renderTrackTable(getSearchResults(), true)}
+      ${renderSearchPanel(results.length)}
+      ${renderTrackTable(results, true)}
     </main>
   `;
 
@@ -144,20 +158,21 @@ function renderHeader(title, showHome) {
   `;
 }
 
-function renderSearchPanel() {
+function renderSearchPanel(resultCount) {
   return `
-    <section class="panel">
+    <section class="panel search-panel">
+      <label class="search-label" for="searchInput">검색어</label>
       <input
         id="searchInput"
         class="search-input"
         type="search"
         value="${escapeAttr(state.query)}"
-        placeholder="번호 또는 제목으로 검색"
+        placeholder="번호, 제목, 별칭으로 검색"
         autocomplete="off"
       />
       <div class="info-bar">
         <span>${escapeHtml(state.status)}</span>
-        <span>총 ${getSearchResults().length}개</span>
+        <span>총 ${resultCount}개</span>
       </div>
     </section>
   `;
