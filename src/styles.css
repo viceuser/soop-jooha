@@ -317,6 +317,41 @@ td.id-cell {
   align-items: end;
 }
 
+.tag-fieldset {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  background: rgba(255, 255, 255, .82);
+}
+
+.tag-fieldset legend {
+  padding: 0 .35rem;
+  color: var(--primary-dark);
+  font-size: .9rem;
+  font-weight: 800;
+}
+
+.tag-option {
+  display: inline-flex !important;
+  align-items: center;
+  gap: .45rem;
+  padding: .45rem .65rem;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.tag-option input {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+}
+
 .form-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -356,6 +391,40 @@ td.id-cell {
 
 .mini-button.danger {
   background: #fa5252;
+}
+
+.badge-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  color: #fff;
+  font-size: .74rem;
+  font-weight: 900;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+
+.tag-badge-new {
+  background: linear-gradient(135deg, #00b894 0%, #55efc4 100%);
+}
+
+.tag-badge-hot {
+  background: linear-gradient(135deg, #ff922b 0%, #ff6b6b 100%);
+}
+
+.tag-badge-blood {
+  background: linear-gradient(135deg, #e03131 0%, #c2255c 100%);
 }
 
 @media (max-width: 720px) {
@@ -410,6 +479,10 @@ td.id-cell {
   .entry-form input {
     min-height: 3rem;
     font-size: 16px;
+  }
+
+  .tag-fieldset {
+    padding: .75rem;
   }
 
   .info-bar {
@@ -472,5 +545,9 @@ td.id-cell {
     width: auto;
     display: flex;
     gap: .5rem;
+  }
+
+  .badge-stack {
+    justify-content: flex-start;
   }
 }

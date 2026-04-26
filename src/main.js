@@ -24,6 +24,8 @@ const firebaseConfig = {
 };
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
+const TRACKS_COLLECTION = import.meta.env.VITE_FIREBASE_COLLECTION || 'signatures';
+const AVAILABLE_TAGS = ['new', 'hot', '열혈'];
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const isAdminPage = window.location.pathname.replace(/\/$/, '') === '/staff-console';
@@ -48,17 +50,37 @@ function normalizeTracks(items) {
       const alias = Array.isArray(item.alias)
         ? item.alias.flatMap((value) => String(value).split(',')).map((value) => value.trim()).filter(Boolean)
         : [];
+      const tags = normalizeTags(item.tags, item.category);
+
       if (!Number.isInteger(id) || id <= 0 || !title) return null;
-      return { id, title, alias };
+      return { id, title, alias, tags };
     })
     .filter(Boolean)
-    .sort((a, b) => a.id - b.id || a.title.localeCompare(b.title, 'ko'));
+    .sort((a, b) => {
+      const aHot = a.tags.includes('열혈');
+      const bHot = b.tags.includes('열혈');
+      if (aHot !== bHot) return aHot ? 1 : -1;
+      return a.id - b.id || a.title.localeCompare(b.title, 'ko');
+    });
+}
+
+function normalizeTags(tags, legacyCategory) {
+  const raw = Array.isArray(tags) ? tags : [];
+  const normalized = raw
+    .map((tag) => String(tag).trim())
+    .filter((tag) => AVAILABLE_TAGS.includes(tag));
+
+  if (legacyCategory === 'hot' && !normalized.includes('열혈')) {
+    normalized.push('열혈');
+  }
+
+  return [...new Set(normalized)];
 }
 
 function subscribeTracks() {
   state.unsubscribeTracks?.();
 
-  const tracksQuery = query(collection(db, 'signatures'), orderBy('id', 'asc'));
+  const tracksQuery = query(collection(db, TRACKS_COLLECTION), orderBy('id', 'asc'));
   state.unsubscribeTracks = onSnapshot(
     tracksQuery,
     (snapshot) => {
@@ -92,6 +114,7 @@ function getSearchResults() {
     String(track.id).includes(queryText)
     || track.title.toLowerCase().includes(queryText)
     || track.alias.join(' ').toLowerCase().includes(queryText)
+    || track.tags.join(' ').toLowerCase().includes(queryText)
   ));
 }
 
@@ -167,7 +190,7 @@ function renderSearchPanel(resultCount) {
         class="search-input"
         type="search"
         value="${escapeAttr(state.query)}"
-        placeholder="번호, 제목, 별칭으로 검색"
+        placeholder="번호, 제목, 별칭, 태그로 검색"
         autocomplete="off"
       />
       <div class="info-bar">
@@ -196,7 +219,7 @@ function renderLoginBox() {
       <div>
         <strong>관리자 로그인</strong>
         <p>관리자 비밀번호로 수정 권한을 엽니다.</p>
-        <p class="debug-line">Firebase: ${escapeHtml(firebaseConfig.projectId)} / ${escapeHtml(firebaseConfig.authDomain)}</p>
+        <p class="debug-line">Firebase: ${escapeHtml(firebaseConfig.projectId)} / ${escapeHtml(firebaseConfig.authDomain)} / ${escapeHtml(TRACKS_COLLECTION)}</p>
       </div>
       <label>
         비밀번호
@@ -225,6 +248,15 @@ function renderEditor() {
         별칭 검색어
         <input id="entryAlias" type="text" value="${editingTrack ? escapeAttr(editingTrack.alias.join(', ')) : ''}" ${disabled ? 'disabled' : ''} />
       </label>
+      <fieldset class="tag-fieldset" ${disabled ? 'disabled' : ''}>
+        <legend>태그</legend>
+        ${AVAILABLE_TAGS.map((tag) => `
+          <label class="tag-option">
+            <input type="checkbox" name="entryTags" value="${tag}" ${editingTrack?.tags.includes(tag) ? 'checked' : ''} ${disabled ? 'disabled' : ''} />
+            <span>${tag}</span>
+          </label>
+        `).join('')}
+      </fieldset>
       <div class="form-actions">
         <button class="btn" type="submit" ${disabled ? 'disabled' : ''}>${editingTrack ? '수정 저장' : '추가 저장'}</button>
         <button class="btn subtle" id="cancelEditButton" type="button" ${disabled || !editingTrack ? 'disabled' : ''}>취소</button>
@@ -234,11 +266,16 @@ function renderEditor() {
   `;
 }
 
-function renderTrackTable(tracks, editable) {
-  const rows = tracks.map((track) => `
-    <tr>
+function renderTrackRows(tracks, editable) {
+  return tracks.map((track) => `
+    <tr class="${track.tags.includes('열혈') ? 'hot-row' : ''}">
       <td class="id-cell">${track.id}</td>
-      <td>${escapeHtml(track.title)}</td>
+      <td>
+        <div class="title-cell-wrap">
+          <span>${escapeHtml(track.title)}</span>
+          ${renderTagBadges(track.tags)}
+        </div>
+      </td>
       ${editable ? `
         <td class="actions-cell">
           <button class="mini-button" data-edit-id="${track.id}" type="button" ${!state.isAdmin ? 'disabled' : ''}>수정</button>
@@ -247,6 +284,33 @@ function renderTrackTable(tracks, editable) {
       ` : ''}
     </tr>
   `).join('');
+}
+
+function renderTagBadges(tags) {
+  if (!tags.length) return '';
+
+  return `
+    <span class="badge-stack">
+      ${tags.map((tag) => `<span class="tag-badge ${getTagBadgeClass(tag)}">${escapeHtml(tag)}</span>`).join('')}
+    </span>
+  `;
+}
+
+function getTagBadgeClass(tag) {
+  if (tag === 'new') return 'tag-badge-new';
+  if (tag === 'hot') return 'tag-badge-hot';
+  if (tag === '열혈') return 'tag-badge-blood';
+  return '';
+}
+
+function renderTrackTable(tracks, editable) {
+  const normalTracks = tracks.filter((track) => !track.tags.includes('열혈'));
+  const hotTracks = tracks.filter((track) => track.tags.includes('열혈'));
+  const colspan = editable ? 3 : 2;
+  const rows = [
+    renderTrackRows(normalTracks, editable),
+    hotTracks.length > 0 ? `<tr class="section-row hot-section-row"><td colspan="${colspan}">열혈 시그</td></tr>${renderTrackRows(hotTracks, editable)}` : ''
+  ].join('');
 
   return `
     <section class="table-wrap search-results" aria-label="검색 결과">
@@ -387,6 +451,7 @@ async function saveTrack(event) {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  const tags = Array.from(document.querySelectorAll('input[name="entryTags"]:checked')).map((input) => input.value);
 
   if (!Number.isInteger(id) || id <= 0 || !title) {
     state.status = '번호와 제목을 올바르게 입력해 주세요.';
@@ -395,10 +460,11 @@ async function saveTrack(event) {
   }
 
   try {
-    await setDoc(doc(db, 'signatures', String(id)), {
+    await setDoc(doc(db, TRACKS_COLLECTION, String(id)), {
       id,
       title,
       alias,
+      tags,
       updatedAt: serverTimestamp()
     }, { merge: true });
 
@@ -416,7 +482,7 @@ async function deleteTrack(id) {
   if (!window.confirm(`${id}번 항목을 삭제할까요?`)) return;
 
   try {
-    await deleteDoc(doc(db, 'signatures', String(id)));
+    await deleteDoc(doc(db, TRACKS_COLLECTION, String(id)));
     state.status = `${id}번을 삭제했습니다.`;
     render();
   } catch (error) {
@@ -431,10 +497,11 @@ async function seedDefaultTracks() {
 
   try {
     const tracks = normalizeTracks(fallbackTracks);
-    await Promise.all(tracks.map((track) => setDoc(doc(db, 'signatures', String(track.id)), {
+    await Promise.all(tracks.map((track) => setDoc(doc(db, TRACKS_COLLECTION, String(track.id)), {
       id: track.id,
       title: track.title,
       alias: track.alias || [],
+      tags: track.tags || [],
       updatedAt: serverTimestamp()
     }, { merge: true })));
 
